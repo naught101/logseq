@@ -82,7 +82,7 @@
      :links links}))
 
 (defn build-global-graph
-  [theme {:keys [journal? orphan-pages? builtin-pages? excluded-pages?]}]
+  [theme {:keys [journal? orphan-pages? builtin-pages? excluded-pages? missing-pages? aliases?]}]
   (let [dark? (= "dark" theme)
         current-page (or (:block/name (db/get-current-page)) "")]
     (when-let [repo (state/get-current-repo)]
@@ -93,22 +93,34 @@
             full-pages (db/get-all-pages repo)
             all-pages (map db/get-original-name full-pages)
             page-name->original-name (zipmap (map :block/name full-pages) all-pages)
+
+            ; limit pages list using properties
             pages-after-journal-filter (if-not journal?
                                          (remove :block/journal? full-pages)
                                          full-pages)
 
-           pages-after-exclude-filter (cond->> pages-after-journal-filter
-                                        (not excluded-pages?)
-                                        (remove (fn [p] (=  true (:exclude-from-graph-view (:block/properties p))))))
+            pages-after-exclude-filter (cond->> pages-after-journal-filter
+                                         (not excluded-pages?)
+                                         (remove (fn [p] (=  true (:exclude-from-graph-view (:block/properties p))))))
 
+            pages-after-missing-filter (cond->> pages-after-exclude-filter
+                (not missing-pages?)
+                (remove (fn [p] (not (contains? p :block/file)))))
+
+            ; This doesn't work, because the actual page that is aliased
+            pages-after-alias-filter (cond->> pages-after-missing-filter
+                (not aliases?)
+                (remove (fn [p] (contains? p :block/alias))))
+
+            ; set up node list from page list, with further title-based filtering
             links (concat (seq relation)
                           (seq tagged-pages)
                           (seq namespaces))
             linked (set (flatten links))
-            build-in-pages (set (map string/lower-case default-db/built-in-pages-names))
-            nodes (cond->> (map :block/name pages-after-exclude-filter)
+            built-in-pages (set (map string/lower-case default-db/built-in-pages-names))
+            nodes (cond->> (map :block/name pages-after-alias-filter)
                     (not builtin-pages?)
-                    (remove (fn [p] (contains? build-in-pages (string/lower-case p))))
+                    (remove (fn [p] (contains? built-in-pages (string/lower-case p))))
                     (not orphan-pages?)
                     (filter #(contains? linked (string/lower-case %))))
             page-links (reduce (fn [m [k v]] (-> (update m k inc)

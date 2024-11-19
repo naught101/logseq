@@ -553,6 +553,8 @@
 (defonce *orphan-pages? (atom true))
 (defonce *builtin-pages? (atom nil))
 (defonce *excluded-pages? (atom true))
+(defonce *aliases? (atom true))
+(defonce *missing-pages? (atom true))
 (defonce *show-journals-in-page-graph? (atom nil))
 (defonce *link-dist (atom 70))
 (defonce *charge-strength (atom -600))
@@ -575,13 +577,15 @@
 
 (rum/defc ^:large-vars/cleanup-todo graph-filters < rum/reactive
   [graph settings forcesettings n-hops]
-  (let [{:keys [journal? orphan-pages? builtin-pages? excluded-pages?]
+  (let [{:keys [journal? orphan-pages? builtin-pages? excluded-pages? missing-pages? aliases?]
          :or {orphan-pages? true}} settings
         {:keys [link-dist charge-strength charge-range]} forcesettings
         journal?' (rum/react *journal?)
         orphan-pages?' (rum/react *orphan-pages?)
         builtin-pages?' (rum/react *builtin-pages?)
         excluded-pages?' (rum/react *excluded-pages?)
+        missing-pages?' (rum/react *missing-pages?)
+        aliases?' (rum/react *aliases?)
         link-dist'  (rum/react *link-dist)
         charge-strength'  (rum/react *charge-strength)
         charge-range'  (rum/react *charge-range)
@@ -589,6 +593,8 @@
         orphan-pages? (if (nil? orphan-pages?') orphan-pages? orphan-pages?')
         builtin-pages? (if (nil? builtin-pages?') builtin-pages? builtin-pages?')
         excluded-pages? (if (nil? excluded-pages?') excluded-pages? excluded-pages?')
+        missing-pages? (if (nil? missing-pages?') missing-pages? missing-pages?')
+        aliases? (if (nil? aliases?') aliases? aliases?')
         link-dist (if (nil? link-dist') link-dist link-dist')
         charge-strength (if (nil? charge-strength') charge-strength charge-strength')
         charge-range (if (nil? charge-range') charge-range charge-range')
@@ -668,6 +674,24 @@
                              (let [value (not excluded-pages?)]
                                (reset! *excluded-pages? value)
                                (set-setting! :excluded-pages? value)))
+                           true)]]
+              [:div.flex.items-center.justify-between.mb-2
+               [:span "Missing pages"]
+               [:div.mt-1
+                (ui/toggle missing-pages?
+                           (fn []
+                             (let [value (not missing-pages?)]
+                               (reset! *missing-pages? value)
+                               (set-setting! :missing-pages? value)))
+                           true)]]
+              [:div.flex.items-center.justify-between.mb-2
+               [:span "Aliases"]
+               [:div.mt-1
+                (ui/toggle aliases?
+                           (fn []
+                             (let [value (not aliases?)]
+                               (reset! *aliases? value)
+                               (set-setting! :aliases? value)))
                            true)]]
               (when (seq focus-nodes)
                 [:div.flex.flex-col.mb-2
